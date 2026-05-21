@@ -183,26 +183,16 @@ tbody tr:hover td { background: #FAFAF8; }
       <span class="login-logo-text">Prokoptôn</span>
     </div>
     <h1>Tableau de trésorerie</h1>
-    <p>Connectez-vous à votre Odoo pour charger les données.</p>
+    <p>Saisissez votre mot de passe pour accéder aux données.</p>
     <div class="error-box" id="loginError"></div>
     <div class="field">
-      <label>URL de votre Odoo</label>
-      <input type="text" id="odooUrl" placeholder="monentreprise.odoo.com" autocomplete="off" spellcheck="false">
-      <div class="field-hint">Sans https:// — ex : prokopton.odoo.com</div>
-    </div>
-    <div class="field">
-      <label>Adresse e-mail</label>
-      <input type="email" id="odooEmail" placeholder="manager@prokopton.co" autocomplete="email">
-    </div>
-    <div class="field">
-      <label>Clé API Odoo</label>
-      <input type="password" id="odooApiKey" placeholder="••••••••••••••••••••" autocomplete="off">
-      <div class="field-hint">Préférences → Sécurité → Nouvelle clé API</div>
+      <label>Mot de passe</label>
+      <input type="password" id="dashPassword" placeholder="••••••••••••••••" autocomplete="current-password">
     </div>
     <button class="btn-primary" id="btnConnect" onclick="handleConnect()">
-      <span id="btnConnectText">Se connecter</span>
+      <span id="btnConnectText">Accéder au tableau</span>
     </button>
-    <div class="login-note">Vos identifiants sont sauvegardés localement et ne transitent que vers votre propre Odoo.</div>
+    <div class="login-note">Accès sécurisé — vos données restent sur votre instance Odoo.</div>
   </div>
 </div>
 
@@ -628,18 +618,22 @@ const switchInvoiceTab = (i, el) => {
 };
 
 const handleConnect = async () => {
-  const url = document.getElementById('odooUrl').value.trim().replace(/^https?:\/\//,'').replace(/\/$/,'');
-  const email = document.getElementById('odooEmail').value.trim();
-  const apiKey = document.getElementById('odooApiKey').value.trim();
+  const password = document.getElementById('dashPassword').value;
   const err = document.getElementById('loginError');
   err.style.display = 'none';
-  if (!url||!email||!apiKey) { err.textContent='Veuillez remplir tous les champs.'; err.style.display='block'; return; }
+  if (!password) { err.textContent = 'Veuillez saisir votre mot de passe.'; err.style.display = 'block'; return; }
   const btn = document.getElementById('btnConnect');
   btn.disabled = true;
   document.getElementById('btnConnectText').textContent = 'Connexion en cours…';
   try {
-    await authenticate(url, email, apiKey);
-    saveCreds(url, email, apiKey);
+    const resp = await fetch('/.netlify/functions/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    SESSION = { odooUrl: data.odooUrl, db: data.db, uid: data.uid, apiKey: data.apiKey };
+    sessionStorage.setItem('tresorerie_session', JSON.stringify(SESSION));
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
     await loadData();
@@ -647,31 +641,33 @@ const handleConnect = async () => {
     err.textContent = e.message; err.style.display = 'block';
   } finally {
     btn.disabled = false;
-    document.getElementById('btnConnectText').textContent = 'Se connecter';
+    document.getElementById('btnConnectText').textContent = 'Accéder au tableau';
   }
 };
 
 const handleLogout = () => {
-  clearCreds(); SESSION = {}; FILTERS = { companies: [], journals: [] };
+  sessionStorage.removeItem('tresorerie_session');
+  SESSION = {}; FILTERS = { companies: [], journals: [] };
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('odooApiKey').value = '';
+  document.getElementById('dashPassword').value = '';
   document.getElementById('filterBar').classList.remove('visible');
 };
 
 window.addEventListener('DOMContentLoaded', async () => {
-  const c = loadCreds();
-  if (c) {
-    document.getElementById('odooUrl').value = c.url;
-    document.getElementById('odooEmail').value = c.email;
-    document.getElementById('odooApiKey').value = c.key;
-    try {
-      await authenticate(c.url, c.email, c.key);
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      await loadData();
-    } catch { clearCreds(); }
-  }
+  // Restore session if exists (survives page refresh, not browser close)
+  try {
+    const saved = sessionStorage.getItem('tresorerie_session');
+    if (saved) {
+      SESSION = JSON.parse(saved);
+      if (SESSION.uid && SESSION.odooUrl) {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        await loadData();
+        return;
+      }
+    }
+  } catch { sessionStorage.removeItem('tresorerie_session'); }
 });
 
 document.addEventListener('keydown', e => {
