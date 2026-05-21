@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trésorerie — Tableau de bord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface2: #F0EEE8;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.14);
+    --text: #1A1A18;
+    --text2: #6B6A64;
+    --text3: #A09E98;
+    --green: #1D9E75;
+    --green-bg: #E1F5EE;
+    --green-text: #0F6E56;
+    --red: #D85A30;
+    --red-bg: #FAECE7;
+    --red-text: #993C1D;
+    --blue: #185FA5;
+    --blue-bg: #E6F1FB;
+    --blue-text: #185FA5;
+    --amber: #BA7517;
+    --amber-bg: #FAEEDA;
+    --amber-text: #854F0B;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+
+  #loginScreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+
+  .login-card { background: var(--surface); border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 440px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+
+  .login-logo { width: 44px; height: 44px; background: var(--text); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; }
+  .login-logo svg { width: 22px; height: 22px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .login-card h1 { font-size: 22px; font-weight: 500; margin-bottom: 0.25rem; letter-spacing: -0.3px; }
+  .login-card p { color: var(--text2); font-size: 13px; margin-bottom: 2rem; }
+
+  .field { margin-bottom: 1rem; }
+  .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .field input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; background: var(--surface); color: var(--text); transition: border-color 0.15s; outline: none; }
+  .field input:focus { border-color: var(--text); }
+  .field input::placeholder { color: var(--text3); }
+  .field-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  .btn-primary { width: 100%; padding: 12px; background: var(--text); color: white; border: none; border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 0.5rem; transition: opacity 0.15s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .login-note { margin-top: 1.25rem; padding: 12px 14px; background: var(--surface2); border-radius: var(--radius-sm); font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .login-note strong { color: var(--text); }
+
+  .error-box { background: var(--red-bg); color: var(--red-text); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; margin-bottom: 1rem; display: none; }
+
+  #dashboard { display: none; }
+
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo { width: 32px; height: 32px; background: var(--text); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .topbar-logo svg { width: 16px; height: 16px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .topbar-title { font-size: 15px; font-weight: 500; letter-spacing: -0.2px; }
+  .topbar-date { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .btn-refresh { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--text); color: white; border: none; border-radius: var(--radius-sm); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn-refresh:hover { opacity: 0.85; }
+  .btn-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-refresh svg { width: 14px; height: 14px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .btn-logout { padding: 8px 14px; background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; color: var(--text2); cursor: pointer; }
+  .btn-logout:hover { background: var(--surface2); }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+  #statusBar { display: none; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--radius-sm); margin-bottom: 1.5rem; font-size: 13px; }
+  #statusBar.loading { display: flex; background: var(--blue-bg); color: var(--blue-text); }
+  #statusBar.error { display: flex; background: var(--red-bg); color: var(--red-text); }
+  #statusBar.success { display: flex; background: var(--green-bg); color: var(--green-text); }
+
+  .spinner { width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
+  @media (max-width: 800px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .kpi { background: var(--surface); border-radius: var(--radius); padding: 1.25rem 1.5rem; border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .kpi-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); margin-bottom: 8px; }
+  .kpi-value { font-size: 26px; font-weight: 300; letter-spacing: -0.5px; font-family: 'DM Mono', monospace; }
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.red { color: var(--red); }
+  .kpi-value.blue { color: var(--blue); }
+  .kpi-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  .section { margin-bottom: 2rem; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); }
+
+  .chart-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.5rem; box-shadow: var(--shadow); }
+  .chart-legend { display: flex; gap: 1.5rem; margin-bottom: 1.25rem; }
+  .chart-legend span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .bars-wrap { display: flex; flex-direction: column; gap: 16px; }
+  .bar-week-label { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-bottom: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+  .bar-type-label { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 16px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.7s cubic-bezier(0.22,1,0.36,1); width: 0%; }
+  .bar-amount { font-size: 12px; font-family: 'DM Mono', monospace; width: 110px; text-align: right; flex-shrink: 0; }
+
+  .tabs-nav { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius-sm); padding: 4px; width: fit-content; margin-bottom: 12px; }
+  .tab-btn { padding: 7px 16px; border: none; background: transparent; border-radius: 6px; font-family: inherit; font-size: 13px; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .tab-btn.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  .table-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { padding: 11px 16px; text-align: left; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); background: var(--surface2); border-bottom: 1px solid var(--border); }
+  tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #FAFAF8; }
+  .td-mono { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+  .amount-pos { color: var(--green); font-family: 'DM Mono', monospace; font-weight: 500; text-align: right; }
+  .amount-neg { color: var(--red); font-family: 'DM Mono', monospace; font-weight: 500; text-align: right; }
+  .amount-neu { color: var(--blue); font-family: 'DM Mono', monospace; font-weight: 500; text-align: right; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+  .badge.overdue { background: var(--red-bg); color: var(--red-text); }
+  .badge.due-soon { background: var(--amber-bg); color: var(--amber-text); }
+  .badge.upcoming { background: var(--green-bg); color: var(--green-text); }
+  .badge.sent { background: var(--blue-bg); color: var(--blue-text); }
+  .badge.credit { background: var(--surface2); color: var(--text2); }
+
+  .tfoot-row td { background: var(--surface2); font-weight: 500; border-top: 1px solid var(--border); border-bottom: none; }
+  .empty-state { padding: 3rem; text-align: center; color: var(--text3); font-size: 13px; }
+  .footer { text-align: center; font-size: 11px; color: var(--text3); padding: 2rem 0 3rem; }
+
+  .filter-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 1.5rem; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .filter-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); white-space: nowrap; }
+  .filter-select { padding: 7px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 13px; color: var(--text); background: var(--surface); cursor: pointer; outline: none; min-width: 160px; }
+  .filter-select:focus { border-color: var(--text); }
+  .filter-divider { width: 1px; height: 20px; background: var(--border-strong); margin: 0 4px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <h1>Tableau de trésorerie</h1>
+    <p>Connectez-vous à votre Odoo pour charger les données.</p>
+
+    <div class="error-box" id="loginError"></div>
+
+    <div class="field">
+      <label>URL de votre Odoo</label>
+      <input type="text" id="odooUrl" placeholder="monentreprise.odoo.com" autocomplete="off" spellcheck="false">
+      <div class="field-hint">Sans https:// — ex : monentreprise.odoo.com</div>
+    </div>
+    <div class="field">
+      <label>Adresse e-mail</label>
+      <input type="email" id="odooEmail" placeholder="manager@monentreprise.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Clé API Odoo</label>
+      <input type="password" id="odooApiKey" placeholder="••••••••••••••••••••••" autocomplete="off">
+      <div class="field-hint">Préférences → Sécurité → Nouvelle clé API</div>
+    </div>
+
+    <button class="btn-primary" id="btnConnect" onclick="handleConnect()">
+      <span id="btnConnectText">Se connecter et charger les données</span>
+    </button>
+
+    <div class="login-note">
+      <strong>Vos identifiants restent sur votre ordinateur.</strong><br>
+      Ils sont sauvegardés localement dans votre navigateur et ne transitent que vers votre propre Odoo.
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <nav class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div>
+        <div class="topbar-title">Trésorerie</div>
+        <div class="topbar-date" id="lastUpdate">—</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn-refresh" id="btnRefresh" onclick="loadData()">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Actualiser
+      </button>
+      <button class="btn-logout" onclick="handleLogout()">Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="filter-bar" id="filterBar" style="display:none">
+      <span class="filter-label">Société</span>
+      <select class="filter-select" id="filterCompany" onchange="onFilterChange()">
+        <option value="">Toutes les sociétés</option>
+      </select>
+      <div class="filter-divider"></div>
+      <span class="filter-label">Banque / Journal <span style="font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0">(transactions)</span></span>
+      <select class="filter-select" id="filterJournal" onchange="onFilterChange()">
+        <option value="">Tous les journaux</option>
+      </select>
+    </div>
+    <div id="statusBar">
+      <div class="spinner" id="statusSpinner" style="display:none"></div>
+      <span id="statusMsg"></span>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Encaissements à venir</div>
+        <div class="kpi-value green" id="kpiEnc">—</div>
+        <div class="kpi-sub" id="kpiEncSub">factures clients</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Décaissements à venir</div>
+        <div class="kpi-value red" id="kpiDec">—</div>
+        <div class="kpi-sub" id="kpiDecSub">factures fournisseurs</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Solde net prévisionnel</div>
+        <div class="kpi-value" id="kpiNet">—</div>
+        <div class="kpi-sub">encaissements − décaissements</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">CA non facturé</div>
+        <div class="kpi-value blue" id="kpiCa">—</div>
+        <div class="kpi-sub" id="kpiCaSub">commandes non livrées</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Flux par mois — 3 mois à venir</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:var(--green)"></span>Encaissements</span>
+          <span><span class="legend-dot" style="background:var(--red)"></span>Décaissements</span>
+        </div>
+        <div class="bars-wrap" id="barsWrap">
+          <div class="empty-state">Les données apparaîtront après connexion.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Détail des opérations</div>
+      </div>
+      <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab(0)">Encaissements</button>
+        <button class="tab-btn" onclick="switchTab(1)">Décaissements</button>
+        <button class="tab-btn" onclick="switchTab(2)">CA non facturé</button>
+        <button class="tab-btn" onclick="switchTab(3)">Transactions bancaires</button>
+      </div>
+      <div class="table-card">
+        <div class="tab-panel active" id="panel-0">
+          <table>
+            <thead><tr><th>Client</th><th>N° facture</th><th>Échéance</th><th>Statut</th><th style="text-align:right">Montant TTC</th></tr></thead>
+            <tbody id="tbody-enc"><tr><td colspan="5" class="empty-state">Aucune donnée chargée.</td></tr></tbody>
+            <tfoot><tr class="tfoot-row"><td colspan="4">Total encaissements à venir</td><td class="amount-pos" id="total-enc">—</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="tab-panel" id="panel-1">
+          <table>
+            <thead><tr><th>Fournisseur</th><th>N° pièce</th><th>Échéance</th><th>Statut</th><th style="text-align:right">Montant TTC</th></tr></thead>
+            <tbody id="tbody-dec"><tr><td colspan="5" class="empty-state">Aucune donnée chargée.</td></tr></tbody>
+            <tfoot><tr class="tfoot-row"><td colspan="4">Total décaissements nets à venir</td><td class="amount-neg" id="total-dec">—</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="tab-panel" id="panel-2">
+          <table>
+            <thead><tr><th>Client</th><th>N° commande</th><th>Date</th><th>Livraison prévue</th><th style="text-align:right">Montant HT</th></tr></thead>
+            <tbody id="tbody-ca"><tr><td colspan="5" class="empty-state">Aucune donnée chargée.</td></tr></tbody>
+            <tfoot><tr class="tfoot-row"><td colspan="4">CA non facturé total (HT)</td><td class="amount-neu" id="total-ca">—</td></tr></tfoot>
+          </table>
+        </div>
+
+        <!-- TRANSACTIONS BANCAIRES -->
+        <div class="tab-panel" id="panel-3">
+          <div style="padding:12px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;color:var(--text2)">Afficher</span>
+            <div class="tabs-nav" style="margin-bottom:0">
+              <button class="tab-btn active" id="btnAllTx" onclick="setTxFilter(false)">Toutes</button>
+              <button class="tab-btn" id="btnUnrecTx" onclick="setTxFilter(true)">Non rapprochées</button>
+            </div>
+            <div id="balancesWrap" style="margin-left:auto;display:flex;gap:12px;flex-wrap:wrap"></div>
+          </div>
+          <table>
+            <thead><tr><th>Date</th><th>Libellé</th><th>Partenaire</th><th>Journal</th><th>Rapprochement</th><th style="text-align:right">Montant</th></tr></thead>
+            <tbody id="tbody-tx"><tr><td colspan="6" class="empty-state">Aucune donnée chargée.</td></tr></tbody>
+            <tfoot><tr class="tfoot-row">
+              <td colspan="5">Total affiché</td>
+              <td class="amount-neu" id="total-tx">—</td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Données issues de votre Odoo en temps réel &nbsp;·&nbsp; Serveur local — vos identifiants ne quittent pas votre ordinateur
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = ''; // Netlify functions are at /.netlify/functions/
+const STORE_KEY = 'tresorerie_v4_creds';
+
+const fmt = n => new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(n)) + ' €';
+const fmtDate = d => { if (!d || d === false) return '—'; return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }); };
+const daysDiff = d => d ? Math.round((new Date(d) - new Date()) / 86400000) : null;
+
+const badgeForDue = (dateStr, isCredit = false) => {
+  if (isCredit) return `<span class="badge credit">Avoir</span>`;
+  const d = daysDiff(dateStr);
+  if (d === null) return '';
+  if (d < 0) return `<span class="badge overdue">En retard (${Math.abs(d)}j)</span>`;
+  if (d <= 7) return `<span class="badge due-soon">Dans ${d}j</span>`;
+  return `<span class="badge upcoming">Prévu</span>`;
+};
+
+const setStatus = (type, msg, spinner = false) => {
+  const bar = document.getElementById('statusBar');
+  bar.className = type;
+  document.getElementById('statusSpinner').style.display = spinner ? 'block' : 'none';
+  document.getElementById('statusMsg').textContent = msg;
+  if (type === 'success') setTimeout(() => { bar.className = ''; }, 5000);
+};
+
+const saveCreds = (url, email, key, uid, db) => localStorage.setItem(STORE_KEY, JSON.stringify({ url, email, key, uid, db }));
+const loadCreds = () => { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; } };
+const clearCreds = () => localStorage.removeItem(STORE_KEY);
+
+let SESSION = {};
+
+// ── Appels vers le serveur Node local (pas vers Odoo directement)
+const apiPost = async (endpoint, body) => {
+  // Map /auth, /data, /filters, /transactions to Netlify functions
+  const fnName = endpoint.replace('/', '');
+  const resp = await fetch(`/.netlify/functions/${fnName}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+};
+
+const authenticate = async (url, email, apiKey) => {
+  const res = await apiPost('/auth', { url, email, apiKey });
+  SESSION = { odooUrl: url, db: res.db, uid: res.uid, apiKey };
+  return res;
+};
+
+let FILTERS = { companies: [], journals: [] };
+
+const loadFilters = async () => {
+  try {
+    const data = await apiPost('/filters', SESSION);
+    FILTERS = data;
+    // Populate company select
+    const cSel = document.getElementById('filterCompany');
+    cSel.innerHTML = '<option value="">Toutes les sociétés</option>';
+    data.companies.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.name;
+      cSel.appendChild(o);
+    });
+    // Populate journal select (all)
+    updateJournalSelect(null);
+    document.getElementById('filterBar').style.display = 'flex';
+  } catch(e) {
+    console.warn('Filtres non chargés:', e.message);
+  }
+};
+
+const updateJournalSelect = (companyId) => {
+  const jSel = document.getElementById('filterJournal');
+  jSel.innerHTML = '<option value="">Tous les journaux</option>';
+  FILTERS.journals
+    .filter(j => !companyId || (Array.isArray(j.company_id) && j.company_id[0] == companyId))
+    .forEach(j => {
+      const o = document.createElement('option');
+      o.value = j.id; o.textContent = j.name + (Array.isArray(j.company_id) ? ' — ' + j.company_id[1] : '');
+      jSel.appendChild(o);
+    });
+};
+
+let CURRENT_TAB = 0;
+
+const onFilterChange = async () => {
+  const companyId = document.getElementById('filterCompany').value;
+  updateJournalSelect(companyId ? parseInt(companyId) : null);
+  await loadData();
+  if (CURRENT_TAB === 3) await loadTransactions();
+};
+
+const loadData = async () => {
+  document.getElementById('btnRefresh').disabled = true;
+  const companyId = document.getElementById('filterCompany')?.value;
+  setStatus('loading', 'Chargement des données depuis Odoo…', true);
+  try {
+    const data = await apiPost('/data', {
+      ...SESSION,
+      companyId: companyId ? parseInt(companyId) : null,
+      journalId: null  // Journal filter only applies to bank transactions
+    });
+    renderData(data.cliInv, data.cliCred, data.supInv, data.supCred, data.orders);
+    document.getElementById('lastUpdate').textContent = 'Actualisé à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    setStatus('success', `Données chargées — ${data.cliInv.length} encaissements · ${data.supInv.length} décaissements · ${data.orders.length} commandes`);
+    if (FILTERS.companies.length === 0) await loadFilters();
+  } catch (err) {
+    setStatus('error', err.message);
+  } finally {
+    document.getElementById('btnRefresh').disabled = false;
+  }
+};
+
+const renderData = (cliInv, cliCred, supInv, supCred, orders) => {
+  // Encaissements
+  let totalEnc = 0;
+  const encRows = [...cliInv.map(r=>({...r,_c:false})), ...cliCred.map(r=>({...r,_c:true}))].sort((a,b)=>(a.invoice_date_due||'9999').localeCompare(b.invoice_date_due||'9999'));
+  document.getElementById('tbody-enc').innerHTML = encRows.length ? encRows.map(r => {
+    const amt = r._c ? -r.amount_residual : r.amount_residual; totalEnc += amt;
+    const p = Array.isArray(r.partner_id) ? r.partner_id[1] : '—';
+    return `<tr><td>${p}</td><td class="td-mono">${r.name||'—'}</td><td>${fmtDate(r.invoice_date_due)}</td><td>${badgeForDue(r.invoice_date_due,r._c)}</td><td class="${r._c?'amount-neg':'amount-pos'}">${r._c?'−':'+'}${fmt(Math.abs(amt))}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty-state">Aucune facture client en attente.</td></tr>';
+  document.getElementById('total-enc').textContent = (totalEnc>=0?'+':'−')+fmt(Math.abs(totalEnc));
+  document.getElementById('kpiEnc').textContent = '+'+fmt(cliInv.reduce((s,r)=>s+r.amount_residual,0));
+  document.getElementById('kpiEncSub').textContent = `${cliInv.length} facture${cliInv.length>1?'s':''} client`;
+
+  // Décaissements
+  let totalDec = 0;
+  const decRows = [...supInv.map(r=>({...r,_c:false})), ...supCred.map(r=>({...r,_c:true}))].sort((a,b)=>(a.invoice_date_due||'9999').localeCompare(b.invoice_date_due||'9999'));
+  document.getElementById('tbody-dec').innerHTML = decRows.length ? decRows.map(r => {
+    const amt = r._c ? -r.amount_residual : r.amount_residual; totalDec += amt;
+    const p = Array.isArray(r.partner_id) ? r.partner_id[1] : '—';
+    return `<tr><td>${p}</td><td class="td-mono">${r.name||'—'}</td><td>${fmtDate(r.invoice_date_due)}</td><td>${badgeForDue(r.invoice_date_due,r._c)}</td><td class="${r._c?'amount-pos':'amount-neg'}">${r._c?'+':'−'}${fmt(Math.abs(amt))}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty-state">Aucune facture fournisseur en attente.</td></tr>';
+  document.getElementById('total-dec').textContent = '−'+fmt(Math.abs(totalDec));
+  document.getElementById('kpiDec').textContent = '−'+fmt(supInv.reduce((s,r)=>s+r.amount_residual,0));
+  document.getElementById('kpiDecSub').textContent = `${supInv.length} facture${supInv.length>1?'s':''} fournisseur`;
+
+  // Solde net
+  const net = totalEnc - totalDec;
+  const kn = document.getElementById('kpiNet');
+  kn.textContent = (net>=0?'+':'−')+fmt(Math.abs(net));
+  kn.className = 'kpi-value '+(net>=0?'green':'red');
+
+  // CA non facturé
+  let totalCa = 0;
+  document.getElementById('tbody-ca').innerHTML = orders.length ? orders.map(r => {
+    totalCa += r.amount_untaxed||0;
+    const p = Array.isArray(r.partner_id) ? r.partner_id[1] : '—';
+    return `<tr><td>${p}</td><td class="td-mono">${r.name||'—'}</td><td>${fmtDate(r.date_order)}</td><td>${r.commitment_date?fmtDate(r.commitment_date):'<span style="color:var(--text3)">Non définie</span>'}</td><td class="amount-neu">${fmt(r.amount_untaxed)}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty-state">Aucune commande en attente de facturation.</td></tr>';
+  document.getElementById('total-ca').textContent = fmt(totalCa);
+  document.getElementById('kpiCa').textContent = fmt(totalCa);
+  document.getElementById('kpiCaSub').textContent = `${orders.length} commande${orders.length>1?'s':''} non facturée${orders.length>1?'s':''}`;
+
+  // Graphique mensuel (3 mois)
+  const months = Array.from({length:3},(_,i)=>{
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth()+i);
+    const start = new Date(d);
+    const end = new Date(d.getFullYear(), d.getMonth()+1, 0);
+    const label = d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    return { label: label.charAt(0).toUpperCase()+label.slice(1), start:start.toISOString().slice(0,10), end:end.toISOString().slice(0,10), enc:0, dec:0 };
+  });
+  const assign=(items,key)=>items.forEach(r=>{ const w=months.find(w=>r.invoice_date_due>=w.start&&r.invoice_date_due<=w.end); if(w) w[key]+=r.amount_residual||0; });
+  assign(cliInv,'enc'); assign(supInv,'dec');
+  const maxVal = Math.max(...months.map(w=>Math.max(w.enc,w.dec)),1);
+  document.getElementById('barsWrap').innerHTML = months.map(w=>`
+    <div>
+      <div class="bar-week-label">${w.label}</div>
+      <div class="bar-row"><span class="bar-type-label" style="background:var(--green)"></span><div class="bar-track"><div class="bar-fill" style="background:var(--green);width:${(w.enc/maxVal*100).toFixed(1)}%"></div></div><div class="bar-amount" style="color:var(--green)">${w.enc>0?'+'+fmt(w.enc):'—'}</div></div>
+      <div class="bar-row"><span class="bar-type-label" style="background:var(--red)"></span><div class="bar-track"><div class="bar-fill" style="background:var(--red);width:${(w.dec/maxVal*100).toFixed(1)}%"></div></div><div class="bar-amount" style="color:var(--red)">${w.dec>0?'−'+fmt(w.dec):'—'}</div></div>
+    </div>`).join('');
+};
+
+const switchTab = async i => {
+  CURRENT_TAB = i;
+  document.querySelectorAll('.tab-panel').forEach((p,j)=>p.classList.toggle('active',i===j));
+  document.querySelectorAll('.tab-btn').forEach((b,j)=>b.classList.toggle('active',i===j));
+  if (i === 3 && SESSION.uid) await loadTransactions();
+};
+
+// ── Transactions bancaires
+let TX_UNRECONCILED = false;
+
+const setTxFilter = async (unreconciled) => {
+  TX_UNRECONCILED = unreconciled;
+  document.getElementById('btnAllTx').classList.toggle('active', !unreconciled);
+  document.getElementById('btnUnrecTx').classList.toggle('active', unreconciled);
+  await loadTransactions();
+};
+
+const loadTransactions = async () => {
+  const companyId = document.getElementById('filterCompany')?.value;
+  const journalId = document.getElementById('filterJournal')?.value;
+  try {
+    const data = await apiPost('/transactions', {
+      ...SESSION,
+      companyId: companyId ? parseInt(companyId) : null,
+      journalId: journalId ? parseInt(journalId) : null,
+      unreconciled: TX_UNRECONCILED
+    });
+
+    // Soldes par journal
+    const balWrap = document.getElementById('balancesWrap');
+    balWrap.innerHTML = (data.journalsWithBalance || []).map(j => {
+      const bal = parseFloat(j.current_statement_balance) || 0;
+      return `<div style="display:flex;flex-direction:column;align-items:flex-end;padding:6px 12px;background:var(--surface2);border-radius:var(--radius-sm)">
+        <span style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">${Array.isArray(j.company_id)?j.company_id[1]+' · ':''} ${j.name}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:${bal>=0?'var(--green)':'var(--red)'}">${bal>=0?'+':''}${fmt(bal)}</span>
+      </div>`;
+    }).join('');
+
+    // Transactions
+    const txRows = (data.transactions || []).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    let totalTx = 0;
+    document.getElementById('tbody-tx').innerHTML = txRows.length ? txRows.map(r => {
+      const amt = parseFloat(r.amount) || 0;
+      totalTx += amt;
+      const partner = Array.isArray(r.partner_id) ? r.partner_id[1] : '—';
+      const journal = Array.isArray(r.journal_id) ? r.journal_id[1] : '—';
+      const reconciled = r.is_reconciled;
+      const badge = reconciled
+        ? `<span class="badge upcoming">Rapproché</span>`
+        : `<span class="badge due-soon">Non rapproché</span>`;
+      return `<tr>
+        <td class="td-mono">${r.date||'—'}</td>
+        <td>${r.payment_ref||'—'}</td>
+        <td>${partner}</td>
+        <td>${journal}</td>
+        <td>${badge}</td>
+        <td class="${amt>=0?'amount-pos':'amount-neg'}">${amt>=0?'+':''}${fmt(Math.abs(amt))}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="6" class="empty-state">Aucune transaction.</td></tr>';
+
+    document.getElementById('total-tx').textContent = (totalTx>=0?'+':'−')+fmt(Math.abs(totalTx));
+  } catch(e) {
+    document.getElementById('tbody-tx').innerHTML = `<tr><td colspan="6" class="empty-state">Erreur : ${e.message}</td></tr>`;
+  }
+};
+
+const handleConnect = async () => {
+  const url = document.getElementById('odooUrl').value.trim().replace(/^https?:\/\//,'').replace(/\/$/,'');
+  const email = document.getElementById('odooEmail').value.trim();
+  const apiKey = document.getElementById('odooApiKey').value.trim();
+  const err = document.getElementById('loginError');
+  err.style.display = 'none';
+  if (!url||!email||!apiKey) { err.textContent='Veuillez remplir tous les champs.'; err.style.display='block'; return; }
+  const btn = document.getElementById('btnConnect');
+  btn.disabled = true;
+  document.getElementById('btnConnectText').textContent = 'Connexion en cours…';
+  try {
+    await authenticate(url, email, apiKey);
+    saveCreds(url, email, apiKey, SESSION.uid, SESSION.db);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    await loadData();
+  } catch(e) {
+    err.textContent = e.message; err.style.display='block';
+  } finally {
+    btn.disabled=false; document.getElementById('btnConnectText').textContent='Se connecter et charger les données';
+  }
+};
+
+const handleLogout = () => {
+  clearCreds(); SESSION = {};
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('odooApiKey').value='';
+};
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const c = loadCreds();
+  if (c) {
+    document.getElementById('odooUrl').value=c.url;
+    document.getElementById('odooEmail').value=c.email;
+    document.getElementById('odooApiKey').value=c.key;
+    try {
+      await authenticate(c.url, c.email, c.key);
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('dashboard').style.display='block';
+      await loadData();
+    } catch { clearCreds(); }
+  }
+});
+
+document.addEventListener('keydown', e => { if (e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') handleConnect(); });
+</script>
+</body>
+</html>
