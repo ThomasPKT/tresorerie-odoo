@@ -533,14 +533,15 @@ const onCompanyChange = async () => {
 
 const onJournalChange = async () => {
   // Journal filter only affects bank transactions
-  if (CURRENT_PAGE === 1) await loadTransactions();
+  await loadTransactions();
 };
 
 const onFilterChange = onCompanyChange;
 
 const loadTransactions = async () => {
-  const companyId = document.getElementById('filterCompany')?.value;
-  const journalId = document.getElementById('filterJournal')?.value;
+  const companyId = document.getElementById('filterCompany')?.value || '';
+  const journalId = document.getElementById('filterJournal')?.value || '';
+  console.log('loadTransactions - journalId:', journalId, 'companyId:', companyId);
   try {
     const data = await apiPost('/transactions', { ...SESSION, companyId: companyId ? parseInt(companyId) : null, journalId: journalId ? parseInt(journalId) : null, unreconciled: TX_UNRECONCILED });
 
