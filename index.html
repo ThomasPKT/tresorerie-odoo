@@ -541,9 +541,13 @@ const onFilterChange = onCompanyChange;
 const loadTransactions = async () => {
   const companyId = document.getElementById('filterCompany')?.value || '';
   const journalId = document.getElementById('filterJournal')?.value || '';
-  console.log('loadTransactions - journalId:', journalId, 'companyId:', companyId);
   try {
-    const data = await apiPost('/transactions', { ...SESSION, companyId: companyId ? parseInt(companyId) : null, journalId: journalId ? parseInt(journalId) : null, unreconciled: TX_UNRECONCILED });
+    const data = await apiPost('/transactions', { ...SESSION, companyId: companyId ? parseInt(companyId) : null, journalId: null, unreconciled: TX_UNRECONCILED });
+    // Filter by journal client-side (more reliable than Odoo domain filter)
+    if (journalId) {
+      data.transactions = (data.transactions || []).filter(r => Array.isArray(r.journal_id) && r.journal_id[0] == parseInt(journalId));
+      data.journalsWithBalance = (data.journalsWithBalance || []).filter(j => j.id == parseInt(journalId));
+    }
 
     // Balances
     document.getElementById('balancesWrap').innerHTML = (data.journalsWithBalance||[]).map(j => {
