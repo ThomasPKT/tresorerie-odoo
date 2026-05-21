@@ -242,12 +242,12 @@ tbody tr:hover td { background: #FAFAF8; }
     <div class="filter-bar" id="filterBar">
       <span class="filter-label">Société</span>
       <div class="filter-sep"></div>
-      <select class="filter-select" id="filterCompany" onchange="onFilterChange()">
+      <select class="filter-select" id="filterCompany" onchange="onCompanyChange()">
         <option value="">Toutes les sociétés</option>
       </select>
       <div class="filter-sep" id="journalSep" style="display:none"></div>
       <span class="filter-label" id="journalLabel" style="display:none">Compte</span>
-      <select class="filter-select" id="filterJournal" onchange="onFilterChange()" style="display:none">
+      <select class="filter-select" id="filterJournal" onchange="onJournalChange()" style="display:none">
         <option value="">Tous les comptes</option>
       </select>
     </div>
@@ -510,32 +510,51 @@ const loadFilters = async () => {
     const data = await apiPost('/filters', SESSION);
     FILTERS = data;
     const cSel = document.getElementById('filterCompany');
+    const prevCompany = cSel.value;
     cSel.innerHTML = '<option value="">Toutes les sociétés</option>';
     (data.companies||[]).forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; cSel.appendChild(o); });
-    updateJournalSelect(null);
+    if (prevCompany) cSel.value = prevCompany;
+    const prevJournal = document.getElementById('filterJournal').value;
+    updateJournalSelect(prevCompany ? parseInt(prevCompany) : null);
+    if (prevJournal) document.getElementById('filterJournal').value = prevJournal;
     document.getElementById('filterBar').classList.add('visible');
   } catch(e) { console.warn('Filtres:', e.message); }
 };
 
 const updateJournalSelect = (companyId) => {
   const jSel = document.getElementById('filterJournal');
+  const prevVal = jSel.value;
   jSel.innerHTML = '<option value="">Tous les comptes</option>';
   (FILTERS.journals||[]).filter(j => !companyId || (Array.isArray(j.company_id) && j.company_id[0] == companyId))
     .forEach(j => { const o = document.createElement('option'); o.value = j.id; o.textContent = j.name + (Array.isArray(j.company_id) ? ' — ' + j.company_id[1] : ''); jSel.appendChild(o); });
+  if (prevVal) jSel.value = prevVal;
 };
 
-const onFilterChange = async () => {
+const onCompanyChange = async () => {
   const companyId = document.getElementById('filterCompany').value;
   updateJournalSelect(companyId ? parseInt(companyId) : null);
   await loadData();
   if (CURRENT_PAGE === 1) await loadTransactions();
 };
 
+const onJournalChange = async () => {
+  const journalId = document.getElementById('filterJournal').value;
+  console.log('Journal changed to:', journalId);
+  await loadTransactions();
+};
+
+const onFilterChange = onCompanyChange;
+
 const loadTransactions = async () => {
-  const companyId = document.getElementById('filterCompany')?.value;
-  const journalId = document.getElementById('filterJournal')?.value;
+  const companyId = document.getElementById('filterCompany')?.value || '';
+  const journalId = document.getElementById('filterJournal')?.value || '';
   try {
-    const data = await apiPost('/transactions', { ...SESSION, companyId: companyId ? parseInt(companyId) : null, journalId: journalId ? parseInt(journalId) : null, unreconciled: TX_UNRECONCILED });
+    const data = await apiPost('/transactions', { ...SESSION, companyId: companyId ? parseInt(companyId) : null, journalId: null, unreconciled: TX_UNRECONCILED });
+    // Filter by journal client-side (more reliable than Odoo domain filter)
+    if (journalId) {
+      data.transactions = (data.transactions || []).filter(r => Array.isArray(r.journal_id) && r.journal_id[0] == parseInt(journalId));
+      data.journalsWithBalance = (data.journalsWithBalance || []).filter(j => j.id == parseInt(journalId));
+    }
 
     // Balances
     document.getElementById('balancesWrap').innerHTML = (data.journalsWithBalance||[]).map(j => {
