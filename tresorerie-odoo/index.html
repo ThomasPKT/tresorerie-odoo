@@ -377,7 +377,7 @@ const apiPost = async (endpoint, body) => {
 };
 
 const authenticate = async (url, email, apiKey) => {
-  const res = await apiPost('/auth', { url, email, apiKey });
+  const res = await apiPost('/auth', { odooUrl: url, email, apiKey });
   SESSION = { odooUrl: url, db: res.db, uid: res.uid, apiKey };
   return res;
 };
